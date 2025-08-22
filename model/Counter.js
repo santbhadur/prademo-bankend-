@@ -1,8 +1,9 @@
+
 const mongoose = require("mongoose");
 
-const CounterSchema = new mongoose.Schema({
-  id: { type: String, required: true }, // e.g. "billNumber"
+const counterSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
   seq: { type: Number, default: 0 },
 });
 
-module.exports = mongoose.model("Counter", CounterSchema);
+module.exports = mongoose.model("Counter", counterSchema);

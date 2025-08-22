@@ -1,3 +1,4 @@
+// models/Bill.js
 const mongoose = require("mongoose");
 
 const itemSchema = new mongoose.Schema({
@@ -9,7 +10,7 @@ const itemSchema = new mongoose.Schema({
 
 const billSchema = new mongoose.Schema({
   billNumber: { type: Number, required: true, unique: true },
-  billDate: String,
+  billDate: { type: Date, default: Date.now },   // ✅ store as Date
   customerName: String,
   phoneNumber: String,
   items: [itemSchema],

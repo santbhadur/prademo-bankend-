@@ -1,8 +1,15 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
 const Bill = require("./model/Bill");
 const Counter = require("./model/Counter");
+const GstBill = require("./model/GstBill");
+const Counter1 = require("./model/Counter1");
+const Logo = require("./model/Logo");
+
+
 
 const app = express();
 
@@ -15,11 +22,12 @@ mongoose.connect(
   "mongodb+srv://yrohan645:vEeMddaYn6y1iMxq@rohanapi.gxdefpz.mongodb.net/vastu?retryWrites=true&w=majority&appName=RohanApi",
   { useNewUrlParser: true, useUnifiedTopology: true }
 );
+
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 db.once("open", () => console.log("✅ MongoDB connected"));
 
-// Function to get next sequence number
+// Helper functions for sequence
 async function getNextSequence(name) {
   const counter = await Counter.findOneAndUpdate(
     { id: name },
@@ -29,19 +37,78 @@ async function getNextSequence(name) {
   return counter.seq;
 }
 
-// Get next bill number (without saving)
+async function getNextSequences(name) {
+  const counter = await Counter1.findOneAndUpdate(
+    { id: name },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return counter.seq;
+}
+
+// Upload folder setup
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // ✅ images uploads/ folder me save honge
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // unique name
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// ------------------ API ROUTES ------------------
+
+// ✅ Upload API
+// ✅ Upload API with DB save
+app.post("/upload", upload.single("logo"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // Pehle purane logo delete karna (sirf 1 logo rakhna ho)
+    await Logo.deleteMany({});
+
+    // Naya logo save karna DB me
+    const newLogo = new Logo({
+      filename: req.file.filename,
+      filePath: `/uploads/${req.file.filename}`,
+    });
+
+    await newLogo.save();
+
+    res.json({
+      message: "Logo uploaded and saved successfully",
+      filePath: newLogo.filePath,
+    });
+  } catch (err) {
+    console.error("Error saving logo:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ✅ Get latest logo
+app.get("/api/logo", async (req, res) => {
+  try {
+    const logo = await Logo.findOne().sort({ uploadedAt: -1 });
+    if (!logo) return res.status(404).json({ message: "No logo found" });
+    res.json(logo);
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching logo" });
+  }
+});
+
+
+// ✅ Static folder to serve images
+app.use("/uploads", express.static("uploads"));
+
+// ✅ Get next bill number (normal bills)
 app.get("/api/bills/next-bill", async (req, res) => {
   try {
     const counter = await Counter.findOne({ id: "billNumber" });
-
-    let nextBillNumber;
-    if (!counter) {
-      // If no counter exists, start from 1
-      nextBillNumber = 1;
-    } else {
-      nextBillNumber = counter.seq + 1;
-    }
-
+    let nextBillNumber = counter ? counter.seq + 1 : 1;
     res.json({ nextBillNumber });
   } catch (err) {
     console.error("Error fetching next bill number:", err);
@@ -49,36 +116,34 @@ app.get("/api/bills/next-bill", async (req, res) => {
   }
 });
 
+// ✅ Get next bill number (GST bills)
+app.get("/api/bills/next-bills", async (req, res) => {
+  try {
+    const counter = await Counter1.findOne({ id: "billNumber" });
+    let nextBillNumber = counter ? counter.seq + 1 : 1;
+    res.json({ nextBillNumber });
+  } catch (err) {
+    console.error("Error fetching next bill number:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-// Create Bill (Auto Increment billNumber)
-// Create Bill (Auto Increment billNumber)
+// ✅ Create Bill (Normal)
 app.post("/api/bills", async (req, res) => {
   try {
     const nextBillNumber = await getNextSequence("billNumber");
 
-    const {
-      billDate,
-      customerName,
-      phoneNumber,
-      items,
-      subtotal,
-      discountType,
-      discountValue,
-      discountAmount,
-      grandTotal,
-    } = req.body;
-
     const bill = new Bill({
       billNumber: nextBillNumber,
-      billDate,
-      customerName,
-      phoneNumber,
-      items,
-      subtotal,
-      discountType,
-      discountValue,
-      discountAmount,
-      grandTotal,
+      billDate: req.body.billDate || new Date(),
+      customerName: req.body.customerName,
+      phoneNumber: req.body.phoneNumber,
+      items: req.body.items,
+      subtotal: req.body.subtotal,
+      discountType: req.body.discountType,
+      discountValue: req.body.discountValue,
+      discountAmount: req.body.discountAmount,
+      grandTotal: req.body.grandTotal,
     });
 
     await bill.save();
@@ -89,13 +154,77 @@ app.post("/api/bills", async (req, res) => {
   }
 });
 
-// Get all bills
-app.get("/", async (req, res) => {
-  const bills = await Bill.find();
-  res.json(bills);
+function parseDate(input) {
+  if (!input) return new Date();
+  // If input is in DD/MM/YYYY format
+  if (input.includes("/")) {
+    const [day, month, year] = input.split("/");
+    return new Date(`${year}-${month}-${day}`);
+  }
+  return new Date(input); // for ISO or timestamp
+}
+
+app.post("/api/billss", async (req, res) => {
+  try {
+    const nextBillNumber = await getNextSequences("billNumber");
+
+    const gstBill = new GstBill({
+      billNumber: nextBillNumber,
+      billDate: parseDate(req.body.billDate), // ✅ Safe parse
+      customerName: req.body.customerName,
+      phoneNumber: req.body.phoneNumber,
+      items: req.body.items,
+      subtotal: req.body.subtotal,
+      gstType: req.body.gstType,          // ✅ GST Type bhi save karo
+      gstTotal: req.body.gstTotal,
+      cgstTotal: req.body.cgstTotal,      // ✅ ADD THIS
+      sgstTotal: req.body.sgstTotal,      // ✅ ADD THIS
+      igstTotal: req.body.igstTotal,      // ✅ ADD THIS
+      discountType: req.body.discountType,
+      discountValue: req.body.discountValue,
+      discountAmount: req.body.discountAmount,
+      grandTotal: req.body.grandTotal,
+    });
+
+    await gstBill.save();
+    res.status(201).json(gstBill);
+  } catch (err) {
+    console.error("Error saving GST bill:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Start server
+// ✅ Get all normal bills (with optional date filter)
+app.get("/api/bills", async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    let query = {};
+
+    if (from && to) {
+      query.billDate = {
+        $gte: new Date(from),
+        $lte: new Date(to),
+      };
+    }
+
+    const bills = await Bill.find(query).sort({ billDate: -1 });
+    res.json(bills);
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching bills" });
+  }
+});
+
+// ✅ Get all GST bills
+app.get("/api/billss", async (req, res) => {
+  try {
+    const bills = await GstBill.find().sort({ billDate: -1 });
+    res.json(bills);
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching GST bills" });
+  }
+});
+
+// ------------------ START SERVER ------------------
 const PORT = 5000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on http://localhost:${PORT}`)
