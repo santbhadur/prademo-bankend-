@@ -135,7 +135,7 @@ app.post("/api/bills", async (req, res) => {
 
     const bill = new Bill({
       billNumber: nextBillNumber,
-      billDate: req.body.billDate || new Date(),
+      billDate: parseDate(req.body.billDate),
       customerName: req.body.customerName,
       phoneNumber: req.body.phoneNumber,
       items: req.body.items,
@@ -221,6 +221,63 @@ app.get("/api/billss", async (req, res) => {
     res.json(bills);
   } catch (err) {
     res.status(500).json({ error: "Error fetching GST bills" });
+  }
+});
+
+// 🔹 Get single bill (View Page)
+app.get("/api/billss/:id", async (req, res) => {
+  try {
+    const bill = await GstBill.findById(req.params.id);
+    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    res.json(bill);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// 🔹 Get single bill (View Page)
+app.get("/api/bills/:id", async (req, res) => {
+  try {
+    const bill = await Bill.findById(req.params.id);
+    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    res.json(bill);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🔹 Update bill (Edit Page)
+app.put("/api/bills/:id", async (req, res) => {
+  try {
+    const bill = await Bill.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    res.json(bill);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 🔹 Delete bill
+app.delete("/api/bills/:id", async (req, res) => {
+  try {
+    const bill = await Bill.findByIdAndDelete(req.params.id);
+    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    res.json({ message: "Bill deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🔹 Delete bill
+app.delete("/api/billss/:id", async (req, res) => {
+  try {
+    const bill = await GstBill.findByIdAndDelete(req.params.id);
+    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    res.json({ message: "Bill deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

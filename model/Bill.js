@@ -2,23 +2,27 @@
 const mongoose = require("mongoose");
 
 const itemSchema = new mongoose.Schema({
-  itemName: String,
-  price: Number,
-  qty: Number,
-  unit: String,
+  itemName: { type: String, required: true },
+  price: { type: Number, required: true },
+  qty: { type: Number, required: true },
+  unit: { type: String, required: true },
 });
 
 const billSchema = new mongoose.Schema({
   billNumber: { type: Number, required: true, unique: true },
-  billDate: { type: Date, default: Date.now },   // ✅ store as Date
-  customerName: String,
-  phoneNumber: String,
+  billDate: { type: Date, required: true },
+  customerName: { type: String, required: true },
+  phoneNumber: { type: String },
   items: [itemSchema],
-  subtotal: Number,
-  discountType: { type: String, enum: ["percent", "flat"], default: "percent" },
+  subtotal: { type: Number, required: true },
+  discountType: {
+    type: String,
+    enum: ["percent", "flat"], // ✅ FIXED
+    default: "flat",
+  },
   discountValue: { type: Number, default: 0 },
   discountAmount: { type: Number, default: 0 },
-  grandTotal: Number,
+  grandTotal: { type: Number, required: true },
 });
 
 module.exports = mongoose.model("Bill", billSchema);
