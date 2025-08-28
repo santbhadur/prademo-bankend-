@@ -41,7 +41,7 @@ async function getNextSequences(name) {
   const counter = await Counter1.findOneAndUpdate(
     { id: name },
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { new: true, upsert: true } // agar document nahi hai toh bana dega
   );
   return counter.seq;
 }
@@ -170,16 +170,16 @@ app.post("/api/billss", async (req, res) => {
 
     const gstBill = new GstBill({
       billNumber: nextBillNumber,
-      billDate: parseDate(req.body.billDate), // ✅ Safe parse
+      billDate: parseDate(req.body.billDate),
       customerName: req.body.customerName,
       phoneNumber: req.body.phoneNumber,
       items: req.body.items,
       subtotal: req.body.subtotal,
-      gstType: req.body.gstType,          // ✅ GST Type bhi save karo
+      gstType: req.body.gstType,
       gstTotal: req.body.gstTotal,
-      cgstTotal: req.body.cgstTotal,      // ✅ ADD THIS
-      sgstTotal: req.body.sgstTotal,      // ✅ ADD THIS
-      igstTotal: req.body.igstTotal,      // ✅ ADD THIS
+      cgstTotal: req.body.cgstTotal,
+      sgstTotal: req.body.sgstTotal,
+      igstTotal: req.body.igstTotal,
       discountType: req.body.discountType,
       discountValue: req.body.discountValue,
       discountAmount: req.body.discountAmount,
@@ -280,6 +280,34 @@ app.delete("/api/billss/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ✅ Get total of all bills (Normal + GST)
+app.get("/api/bills/total", async (req, res) => {
+  try {
+    // Normal bills ka total
+    const normalTotal = await Bill.aggregate([
+      { $group: { _id: null, total: { $sum: { $toDouble: "$grandTotal" } } } }
+    ]);
+
+    // GST bills ka total
+    const gstTotal = await GstBill.aggregate([
+      { $group: { _id: null, total: { $sum: { $toDouble: "$grandTotal" } } } }
+    ]);
+
+    const normalSum = normalTotal.length > 0 ? normalTotal[0].total : 0;
+    const gstSum = gstTotal.length > 0 ? gstTotal[0].total : 0;
+
+    res.json({
+      normalTotal: normalSum,
+      gstTotal: gstSum,
+      combinedTotal: normalSum + gstSum,
+    });
+  } catch (err) {
+    console.error("Error fetching totals:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ------------------ START SERVER ------------------
 const PORT = 5000;
