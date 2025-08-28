@@ -46,46 +46,34 @@ async function getNextSequences(name) {
   return counter.seq;
 }
 
-// Upload folder setup
+// Storage config
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // ✅ images uploads/ folder me save honge
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // unique name
-  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 // ------------------ API ROUTES ------------------
 
 // ✅ Upload API
 // ✅ Upload API with DB save
-app.post("/upload", upload.single("logo"), async (req, res) => {
+app.post("/upload", upload.single("logo"), (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({ error: "No file uploaded" });
     }
-
-    // Pehle purane logo delete karna (sirf 1 logo rakhna ho)
-    await Logo.deleteMany({});
-
-    // Naya logo save karna DB me
-    const newLogo = new Logo({
-      filename: req.file.filename,
-      filePath: `/uploads/${req.file.filename}`,
-    });
-
-    await newLogo.save();
-
     res.json({
-      message: "Logo uploaded and saved successfully",
-      filePath: newLogo.filePath,
+      message: "File uploaded successfully",
+      filePath: `/uploads/${req.file.filename}`
     });
   } catch (err) {
-    console.error("Error saving logo:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Upload error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
