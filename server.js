@@ -8,10 +8,13 @@ const Counter = require("./model/Counter");
 const GstBill = require("./model/GstBill");
 const Counter1 = require("./model/Counter1");
 const Logo = require("./model/Logo");
-
+const { storage } = require("./cloudinary");
+const upload = multer({ storage });
 
 
 const app = express();
+app.use("/uploads", express.static("uploads"));
+
 
 // Middleware
 app.use(cors());
@@ -46,37 +49,26 @@ async function getNextSequences(name) {
   return counter.seq;
 }
 
-// Storage config
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
 
-const upload = multer({ storage });
+
+
 
 // ------------------ API ROUTES ------------------
 
 // ✅ Upload API
 // ✅ Upload API with DB save
+// ✅ Upload route
 app.post("/upload", upload.single("logo"), (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
     res.json({
-      message: "File uploaded successfully",
-      filePath: `/uploads/${req.file.filename}`
+      message: "Uploaded successfully",
+      url: req.file.path, // Cloudinary returns public URL
     });
   } catch (err) {
     console.error("Upload error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 // ✅ Get latest logo
 app.get("/api/logo", async (req, res) => {
   try {
