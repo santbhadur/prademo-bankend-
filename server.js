@@ -8,7 +8,7 @@ const Counter = require("./model/Counter");
 const GstBill = require("./model/GstBill");
 const Counter1 = require("./model/Counter1");
 const Logo = require("./model/Logo");
-const { storage } = require("./cloudinary");
+const { cloudinary, storage } = require("./cloudinary");
 const upload = multer({ storage });
 
 
@@ -69,16 +69,30 @@ app.post("/upload", upload.single("logo"), (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-// ✅ Get latest logo
 app.get("/api/logo", async (req, res) => {
   try {
-    const logo = await Logo.findOne().sort({ uploadedAt: -1 });
-    if (!logo) return res.status(404).json({ message: "No logo found" });
-    res.json(logo);
+    const result = await cloudinary.search
+      .expression("folder:logos")
+      .sort_by("created_at", "desc")
+      .max_results(1)
+      .execute();
+
+    if (!result.resources || result.resources.length === 0) {
+      return res.status(404).json({ message: "No logo found" });
+    }
+
+    res.json({
+      url: result.resources[0].secure_url,
+      uploadedAt: result.resources[0].created_at,
+    });
   } catch (err) {
-    res.status(500).json({ error: "Error fetching logo" });
+    console.error("Error fetching logo:", err);
+    res.status(500).json({ error: "Error fetching logo", details: err.message });
   }
 });
+
+
+
 
 
 // ✅ Static folder to serve images
