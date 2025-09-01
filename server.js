@@ -253,6 +253,21 @@ app.put("/api/bills/:id", async (req, res) => {
   }
 });
 
+// 🔹 Update gst bill ( Edit Page)
+app.put("/api/billss/:id", async (req, res) => {
+  try {
+    const bill = await GstBill.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    res.json(bill);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
 // 🔹 Delete bill
 app.delete("/api/bills/:id", async (req, res) => {
   try {
