@@ -5,7 +5,8 @@ const GstBillSchema = new mongoose.Schema({
   billDate: { type: Date, default: Date.now },
   customerName: String,
   phoneNumber: String,
-
+  address: { type: String },   // ✅ नया field
+  gstin: { type: String },     // ✅ नया field
   items: [
     {
       itemName: String,    // ✅ frontend ke hisaab se

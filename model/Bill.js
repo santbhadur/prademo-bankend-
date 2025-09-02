@@ -13,6 +13,8 @@ const billSchema = new mongoose.Schema({
   billDate: { type: Date, required: true },
   customerName: { type: String, required: true },
   phoneNumber: { type: String },
+  address: { type: String },   // ✅ नया field
+  gstin: { type: String },     // ✅ नया field
   items: [itemSchema],
   subtotal: { type: Number, required: true },
   discountType: {
