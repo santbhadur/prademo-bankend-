@@ -14,6 +14,7 @@ const GstBillSchema = new mongoose.Schema({
       qty: Number,
       unit: String,
       gst: Number,
+      taxable: Number,
       gstAmount: Number,
       total: Number,
     },
