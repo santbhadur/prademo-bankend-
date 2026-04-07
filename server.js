@@ -10,6 +10,7 @@ const Counter1 = require("./model/Counter1");
 const Logo = require("./model/Logo");
 const { cloudinary, storage } = require("./cloudinary");
 const upload = multer({ storage });
+const Gst = require("./model/Gst")
 
 
 const app = express();
@@ -127,7 +128,7 @@ app.post("/api/bills", async (req, res) => {
   try {
     const nextBillNumber = await getNextSequence("billNumber");
 
-    const bill = new Bill({
+    const gst = new Gst({
       billNumber: nextBillNumber,
       billDate: parseDate(req.body.billDate),
       customerName: req.body.customerName,
@@ -142,8 +143,8 @@ app.post("/api/bills", async (req, res) => {
       grandTotal: req.body.grandTotal,
     });
 
-    await bill.save();
-    res.status(201).json(bill);
+    await Gst.save;
+    res.status(201).json(gst);
   } catch (err) {
     console.error("Error saving bill:", err);
     res.status(500).json({ error: err.message });
